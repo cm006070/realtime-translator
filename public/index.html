@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REALTIME VOICE TRANSLATOR</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Syne+Mono&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --border: #1e1e2e;
+    --accent: #00ff88;
+    --accent2: #ff6b35;
+    --accent3: #7c6dfa;
+    --text: #e8e8f0;
+    --muted: #555570;
+    --live: #ff3366;
+  }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 780px;
+    padding: 32px 20px 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo { font-size: 11px; font-weight: 700; letter-spacing: 0.25em; color: var(--muted); text-transform: uppercase; }
+
+  h1 {
+    font-size: clamp(28px, 6vw, 48px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent3) 60%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .badge {
+    font-family: 'Syne Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--live);
+    border: 1px solid var(--live);
+    padding: 4px 10px;
+    border-radius: 2px;
+    animation: badge-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes badge-pulse {
+    0%,100% { opacity: 1; } 50% { opacity: 0.5; }
+  }
+
+  /* Language selector */
+  .lang-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .lang-box {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px 20px;
+    text-align: center;
+  }
+
+  .lang-box .lang-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.2em;
+    color: var(--muted); text-transform: uppercase; margin-bottom: 6px;
+  }
+
+  .lang-select {
+    background: transparent; border: none;
+    font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700;
+    color: var(--text); outline: none; cursor: pointer;
+    width: 100%; text-align: center; appearance: none;
+  }
+
+  .lang-select option { background: #1a1a2e; }
+  .arrow-icon { font-size: 20px; color: var(--accent3); flex-shrink: 0; font-weight: 800; }
+
+  /* Waveform */
+  .waveform-wrap { width: 100%; height: 56px; }
+  #waveCanvas { width: 100%; height: 100%; }
+
+  /* Record button */
+  .record-area {
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+    padding: 20px 0;
+  }
+
+  .record-btn {
+    width: 96px; height: 96px; border-radius: 50%;
+    border: 2px solid var(--accent);
+    background: transparent; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.3s; outline: none;
+  }
+
+  .record-btn:hover { background: rgba(0,255,136,0.05); }
+
+  .record-btn.recording {
+    border-color: var(--live);
+    animation: pulse-ring 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgba(255,51,102,0.4); }
+    70% { box-shadow: 0 0 0 20px rgba(255,51,102,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,51,102,0); }
+  }
+
+  .record-icon {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--accent); transition: all 0.3s;
+  }
+
+  .record-btn.recording .record-icon {
+    width: 28px; height: 28px; border-radius: 4px; background: var(--live);
+  }
+
+  .record-status {
+    font-family: 'Syne Mono', monospace; font-size: 12px;
+    letter-spacing: 0.15em; color: var(--muted); text-transform: uppercase;
+  }
+
+  /* Output panels */
+  .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  @media (max-width: 560px) {
+    .panels { grid-template-columns: 1fr; }
+    .lang-row { flex-wrap: wrap; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px; overflow: hidden;
+  }
+
+  .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+  }
+
+  .panel-title { font-size: 10px; font-weight: 700; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; }
+  .panel-lang { font-size: 11px; font-weight: 700; color: var(--accent3); letter-spacing: 0.1em; }
+
+  .panel-body {
+    padding: 20px 16px; min-height: 120px;
+    font-size: 15px; line-height: 1.7; color: var(--text); font-weight: 400;
+    white-space: pre-wrap; word-break: break-word;
+  }
+
+  .panel-body.empty {
+    color: var(--muted); font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne Mono', monospace; letter-spacing: 0.05em;
+    text-align: center;
+  }
+
+  /* Streaming cursor */
+  .cursor {
+    display: inline-block; width: 2px; height: 1em;
+    background: var(--accent); animation: blink-cursor 0.8s step-start infinite;
+    vertical-align: text-bottom; margin-left: 2px;
+  }
+
+  @keyframes blink-cursor { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* Error */
+  .error-banner {
+    background: rgba(255,51,102,0.1); border: 1px solid rgba(255,51,102,0.3);
+    border-radius: 4px; padding: 12px 16px; font-size: 13px; color: var(--live);
+    display: none; font-family: 'Syne Mono', monospace; letter-spacing: 0.02em;
+  }
+
+  .error-banner.show { display: block; }
+
+  /* Status bar */
+  .statusbar {
+    display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 4px; font-family: 'Syne Mono', monospace;
+    font-size: 11px; color: var(--muted);
+  }
+
+  .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--muted); flex-shrink: 0; transition: background 0.3s;
+  }
+
+  .statusbar.connected .status-dot { background: var(--accent); }
+  .statusbar.recording .status-dot { background: var(--live); animation: blink-cursor 1s step-start infinite; }
+  .statusbar.error .status-dot { background: var(--live); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div>
+      <div class="logo">OpenAI Realtime API</div>
+      <h1>VOICE<br>TRANSLATOR</h1>
+    </div>
+    <div class="badge">LIVE</div>
+  </header>
+
+  <div class="lang-row">
+    <div class="lang-box">
+      <div class="lang-label">入力言語</div>
+      <select class="lang-select" id="srcLang">
+        <option value="auto">自動検出</option>
+        <option value="ja">日本語</option>
+        <option value="en">English</option>
+        <option value="zh">中文</option>
+        <option value="ko">한국어</option>
+        <option value="fr">Français</option>
+        <option value="de">Deutsch</option>
+        <option value="es">Español</option>
+      </select>
+    </div>
+    <div class="arrow-icon">⟶</div>
+    <div class="lang-box">
+      <div class="lang-label">翻訳先</div>
+      <select class="lang-select" id="tgtLang">
+        <option value="en">English</option>
+        <option value="ja">日本語</option>
+        <option value="zh">中文</option>
+        <option value="ko">한국어</option>
+        <option value="fr">Français</option>
+        <option value="de">Deutsch</option>
+        <option value="es">Español</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="record-area">
+    <div class="waveform-wrap">
+      <canvas id="waveCanvas"></canvas>
+    </div>
+    <button class="record-btn" id="recordBtn">
+      <div class="record-icon"></div>
+    </button>
+    <div class="record-status" id="recordStatus">TAP TO START</div>
+  </div>
+
+  <div class="error-banner" id="errorBanner"></div>
+
+  <div class="panels">
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">認識テキスト</span>
+        <span class="panel-lang" id="detectedLang">—</span>
+      </div>
+      <div class="panel-body empty" id="transcriptPanel">話すとリアルタイムで<br>ここに表示されます</div>
+    </div>
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">翻訳結果</span>
+        <span class="panel-lang" id="tgtLangBadge">EN</span>
+      </div>
+      <div class="panel-body empty" id="translationPanel">翻訳がリアルタイムで<br>ここに流れます</div>
+    </div>
+  </div>
+
+  <div class="statusbar" id="statusBar">
+    <div class="status-dot"></div>
+    <div id="statusText">サーバーに接続中...</div>
+  </div>
+
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────
+let ws = null;
+let mediaStream = null;
+let audioContext = null;
+let processor = null;
+let analyser = null;
+let isRecording = false;
+let animFrameId = null;
+
+let transcriptFinal = '';
+let transcriptDelta = '';
+let translationFinal = '';
+let translationDelta = '';
+
+// ── DOM ────────────────────────────────────────────────
+const recordBtn       = document.getElementById('recordBtn');
+const recordStatus    = document.getElementById('recordStatus');
+const transcriptPanel = document.getElementById('transcriptPanel');
+const translationPanel= document.getElementById('translationPanel');
+const detectedLang    = document.getElementById('detectedLang');
+const tgtLangBadge    = document.getElementById('tgtLangBadge');
+const errorBanner     = document.getElementById('errorBanner');
+const statusBar       = document.getElementById('statusBar');
+const statusText      = document.getElementById('statusText');
+const srcLangSel      = document.getElementById('srcLang');
+const tgtLangSel      = document.getElementById('tgtLang');
+const canvas          = document.getElementById('waveCanvas');
+const ctx2d           = canvas.getContext('2d');
+
+// ── Update target lang badge ───────────────────────────
+tgtLangSel.addEventListener('change', () => {
+  tgtLangBadge.textContent = tgtLangSel.value.toUpperCase();
+});
+
+// ── Connect WebSocket to our server ───────────────────
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}`);
+
+  ws.onopen = () => setStatus('接続完了。録音ボタンを押してください', 'connected');
+
+  ws.onmessage = (e) => {
+    let msg;
+    try { msg = JSON.parse(e.data); } catch { return; }
+    handleOpenAIEvent(msg);
+  };
+
+  ws.onerror = () => showError('サーバーとの接続でエラーが発生しました');
+  ws.onclose = () => {
+    setStatus('切断されました。ページを再読み込みしてください', 'error');
+    isRecording = false;
+    recordBtn.classList.remove('recording');
+    recordStatus.textContent = 'TAP TO START';
+  };
+}
+
+connectWS();
+
+// ── Handle OpenAI Realtime events ─────────────────────
+function handleOpenAIEvent(msg) {
+  switch (msg.type) {
+
+    case 'proxy.connected':
+      // Send session config
+      sendToServer({
+        type: 'session.update',
+        session: {
+          modalities: ['text'],
+          input_audio_format: 'pcm16',
+          input_audio_transcription: { model: 'whisper-1' },
+          turn_detection: {
+            type: 'server_vad',
+            threshold: 0.5,
+            silence_duration_ms: 800
+          },
+          instructions: buildSystemPrompt()
+        }
+      });
+      break;
+
+    case 'error':
+      showError(msg.error?.message || msg.message || 'Unknown error');
+      break;
+
+    // Transcript streaming (what user said)
+    case 'conversation.item.input_audio_transcription.delta':
+      transcriptDelta += msg.delta || '';
+      renderTranscript(transcriptFinal + transcriptDelta, false);
+      break;
+
+    case 'conversation.item.input_audio_transcription.completed':
+      transcriptFinal += (msg.transcript || '') + '\n';
+      transcriptDelta = '';
+      renderTranscript(transcriptFinal, true);
+      break;
+
+    // Translation streaming (GPT-4o response)
+    case 'response.text.delta':
+      translationDelta += msg.delta || '';
+      renderTranslation(translationFinal + translationDelta, false);
+      break;
+
+    case 'response.text.done':
+      translationFinal += (msg.text || '') + '\n';
+      translationDelta = '';
+      renderTranslation(translationFinal, true);
+      break;
+
+    case 'input_audio_buffer.speech_started':
+      setStatus('音声を検出しています...', 'recording');
+      break;
+
+    case 'input_audio_buffer.speech_stopped':
+      setStatus('処理中...', 'connected');
+      break;
+
+    case 'response.done':
+      setStatus('完了 ✓ — 引き続き話しかけてください', 'connected');
+      break;
+  }
+}
+
+function buildSystemPrompt() {
+  const tgt = tgtLangSel.value;
+  const langNames = { ja:'日本語', en:'English', zh:'中文（簡体字）', ko:'한국어', fr:'Français', de:'Deutsch', es:'Español' };
+  return `You are a real-time interpreter. The user will speak in any language. Your ONLY job is to translate what they say into ${langNames[tgt] || tgt}. Output ONLY the translation. No explanations. No comments. No punctuation changes. Stream the translation as fast as possible.`;
+}
+
+function sendToServer(obj) {
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+}
+
+// ── Recording ──────────────────────────────────────────
+recordBtn.addEventListener('click', async () => {
+  isRecording ? stopRecording() : await startRecording();
+});
+
+async function startRecording() {
+  clearError();
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 24000, channelCount: 1 }, video: false });
+  } catch(e) {
+    showError('マイクへのアクセスが拒否されました: ' + e.message);
+    return;
+  }
+
+  audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+  const src = audioContext.createMediaStreamSource(mediaStream);
+
+  analyser = audioContext.createAnalyser();
+  analyser.fftSize = 256;
+  src.connect(analyser);
+
+  processor = audioContext.createScriptProcessor(4096, 1, 1);
+  src.connect(processor);
+  processor.connect(audioContext.destination);
+
+  processor.onaudioprocess = (e) => {
+    if (!isRecording) return;
+    const f32 = e.inputBuffer.getChannelData(0);
+    const i16 = floatToInt16(f32);
+    const b64 = int16ToBase64(i16);
+    sendToServer({ type: 'input_audio_buffer.append', audio: b64 });
+  };
+
+  isRecording = true;
+  recordBtn.classList.add('recording');
+  recordStatus.textContent = 'RECORDING — TAP TO STOP';
+  setStatus('録音中 — 話しかけてください', 'recording');
+  drawWave();
+}
+
+function stopRecording() {
+  isRecording = false;
+  if (processor) { processor.disconnect(); processor = null; }
+  if (audioContext) { audioContext.close(); audioContext = null; }
+  if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+  cancelAnimationFrame(animFrameId);
+  clearCanvas();
+  recordBtn.classList.remove('recording');
+  recordStatus.textContent = 'TAP TO START';
+  setStatus('停止しました', 'connected');
+  sendToServer({ type: 'input_audio_buffer.commit' });
+}
+
+// ── Audio helpers ──────────────────────────────────────
+function floatToInt16(f32) {
+  const i16 = new Int16Array(f32.length);
+  for (let i = 0; i < f32.length; i++) {
+    const s = Math.max(-1, Math.min(1, f32[i]));
+    i16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+  }
+  return i16;
+}
+
+function int16ToBase64(i16) {
+  const bytes = new Uint8Array(i16.buffer);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
+// ── Render helpers ─────────────────────────────────────
+function renderTranscript(text, final) {
+  if (!text.trim()) return;
+  transcriptPanel.classList.remove('empty');
+  transcriptPanel.innerHTML = escHtml(text.trim()) + (final ? '' : '<span class="cursor"></span>');
+}
+
+function renderTranslation(text, final) {
+  if (!text.trim()) return;
+  translationPanel.classList.remove('empty');
+  translationPanel.innerHTML = escHtml(text.trim()) + (final ? '' : '<span class="cursor"></span>');
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// ── Waveform ───────────────────────────────────────────
+function drawWave() {
+  if (!isRecording) return;
+  animFrameId = requestAnimationFrame(drawWave);
+  const W = canvas.width  = canvas.offsetWidth;
+  const H = canvas.height = canvas.offsetHeight;
+  ctx2d.clearRect(0, 0, W, H);
+  if (!analyser) return;
+  const data = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteTimeDomainData(data);
+  ctx2d.strokeStyle = '#00ff88';
+  ctx2d.lineWidth = 1.5;
+  ctx2d.shadowColor = '#00ff88';
+  ctx2d.shadowBlur = 8;
+  ctx2d.beginPath();
+  const step = W / data.length;
+  for (let i = 0; i < data.length; i++) {
+    const y = (data[i] / 128.0) * (H / 2);
+    i === 0 ? ctx2d.moveTo(0, y) : ctx2d.lineTo(i * step, y);
+  }
+  ctx2d.stroke();
+}
+
+function clearCanvas() {
+  const W = canvas.width = canvas.offsetWidth;
+  const H = canvas.height = canvas.offsetHeight;
+  ctx2d.clearRect(0, 0, W, H);
+}
+
+// ── UI helpers ─────────────────────────────────────────
+function showError(msg) { errorBanner.textContent = '⚠ ' + msg; errorBanner.classList.add('show'); }
+function clearError() { errorBanner.classList.remove('show'); }
+function setStatus(msg, cls) { statusText.textContent = msg; statusBar.className = 'statusbar ' + (cls || ''); }
+</script>
+</body>
+</html>
