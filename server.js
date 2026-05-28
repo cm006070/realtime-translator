@@ -21,6 +21,8 @@ wss.on("connection", (browserWs) => {
     return;
   }
 
+  let outputLanguage = "en"; // 初期値: 日本語 → 英語
+
   const openaiWs = new WebSocket(
     "wss://api.openai.com/v1/realtime/translations?model=gpt-realtime-translate",
     {
@@ -36,9 +38,9 @@ wss.on("connection", (browserWs) => {
     }
   }
 
-  openaiWs.on("open", () => {
+  function updateSession() {
+    if (openaiWs.readyState !== WebSocket.OPEN) return;
 
-    // Translation API は instructions 非対応
     openaiWs.send(JSON.stringify({
       type: "session.update",
       session: {
@@ -47,18 +49,21 @@ wss.on("connection", (browserWs) => {
             transcription: {
               model: "gpt-realtime-whisper"
             },
-
             noise_reduction: {
               type: "near_field"
             }
+          },
+          output: {
+            language: outputLanguage
           }
         }
       }
     }));
+  }
 
-    sendToBrowser({
-      type: "proxy.connected"
-    });
+  openaiWs.on("open", () => {
+    updateSession();
+    sendToBrowser({ type: "proxy.connected" });
   });
 
   openaiWs.on("message", (data) => {
@@ -75,28 +80,38 @@ wss.on("connection", (browserWs) => {
   });
 
   openaiWs.on("close", () => {
-    sendToBrowser({
-      type: "proxy.disconnected"
-    });
+    sendToBrowser({ type: "proxy.disconnected" });
   });
 
   browserWs.on("message", (data) => {
     if (openaiWs.readyState !== WebSocket.OPEN) return;
 
     let event;
-
     try {
       event = JSON.parse(data.toString());
     } catch {
       return;
     }
 
-    // 音声chunk転送
-    if (event.type === "session.input_audio_buffer.append") {
-      openaiWs.send(JSON.stringify(event));
+    if (event.type === "config") {
+      if (event.direction === "ja-en") {
+        outputLanguage = "en";
+      }
+
+      if (event.direction === "en-ja") {
+        outputLanguage = "ja";
+      }
+
+      updateSession();
+      return;
     }
 
-    // stopしてもsessionは閉じない
+    if (event.type === "session.input_audio_buffer.append") {
+      openaiWs.send(JSON.stringify(event));
+      return;
+    }
+
+    // stop時は閉じない
     if (event.type === "session.close") {
       return;
     }
