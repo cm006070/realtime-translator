@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Realtime Voice Translator</title>
+
 <style>
 body {
   margin: 0;
@@ -13,15 +14,28 @@ body {
   display: flex;
   justify-content: center;
 }
+
 .container {
   width: 100%;
   max-width: 900px;
   padding: 32px 20px;
 }
+
 h1 {
   font-size: 48px;
   margin: 0 0 24px;
 }
+
+#directionSelect {
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  background: #111118;
+  color: white;
+  border: 1px solid #333;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
 button {
   width: 110px;
   height: 110px;
@@ -32,16 +46,19 @@ button {
   font-size: 14px;
   cursor: pointer;
 }
+
 button.recording {
   border-color: #ff3366;
   color: #ff3366;
 }
+
 .panels {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   margin-top: 24px;
 }
+
 .panel {
   background: #111118;
   border: 1px solid #222235;
@@ -51,21 +68,27 @@ button.recording {
   white-space: pre-wrap;
   line-height: 1.7;
 }
+
 .status {
   margin-top: 20px;
   color: #aaa;
 }
+
 .error {
   margin-top: 16px;
   color: #ff3366;
 }
+
 canvas {
   width: 100%;
   height: 70px;
   margin: 20px 0;
 }
+
 @media (max-width: 700px) {
-  .panels { grid-template-columns: 1fr; }
+  .panels {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
 </head>
@@ -74,8 +97,14 @@ canvas {
 <div class="container">
   <h1>VOICE TRANSLATOR</h1>
 
+  <select id="directionSelect">
+    <option value="ja-en">日本語 → English</option>
+    <option value="en-ja">English → 日本語</option>
+  </select>
+
   <canvas id="wave"></canvas>
 
+  <br />
   <button id="recordBtn">START</button>
 
   <div class="status" id="status">接続中...</div>
@@ -86,6 +115,7 @@ canvas {
       <h3>認識テキスト</h3>
       <div class="panel" id="transcript">ここに認識結果が表示されます</div>
     </div>
+
     <div>
       <h3>翻訳結果</h3>
       <div class="panel" id="translation">ここに翻訳結果が表示されます</div>
@@ -108,6 +138,7 @@ let translationText = "";
 
 const TARGET_SAMPLE_RATE = 24000;
 
+const directionSelect = document.getElementById("directionSelect");
 const recordBtn = document.getElementById("recordBtn");
 const statusEl = document.getElementById("status");
 const errorEl = document.getElementById("error");
@@ -124,6 +155,7 @@ function connectWS() {
 
   ws.onopen = () => {
     statusEl.textContent = "接続完了。録音できます。";
+    sendDirectionConfig();
   };
 
   ws.onmessage = (e) => {
@@ -148,6 +180,29 @@ function connectWS() {
   };
 }
 
+function sendDirectionConfig() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+  ws.send(JSON.stringify({
+    type: "config",
+    direction: directionSelect.value
+  }));
+}
+
+directionSelect.addEventListener("change", () => {
+  sendDirectionConfig();
+
+  transcriptText = "";
+  translationText = "";
+  transcriptEl.textContent = "ここに認識結果が表示されます";
+  translationEl.textContent = "ここに翻訳結果が表示されます";
+
+  statusEl.textContent =
+    directionSelect.value === "ja-en"
+      ? "日本語 → English に設定しました。"
+      : "English → 日本語 に設定しました。";
+});
+
 function handleEvent(event) {
   if (event.type === "proxy.connected") {
     statusEl.textContent = "OpenAIに接続しました。";
@@ -164,14 +219,12 @@ function handleEvent(event) {
     return;
   }
 
-  // Translation API の入力文字起こし
   if (event.type === "session.input_transcript.delta") {
     transcriptText += event.delta || "";
     transcriptEl.textContent = transcriptText;
     return;
   }
 
-  // Translation API の翻訳出力
   if (event.type === "session.output_transcript.delta") {
     translationText += event.delta || "";
     translationEl.textContent = translationText;
@@ -206,7 +259,9 @@ async function ensureWSOpen() {
 
 async function startRecording() {
   errorEl.textContent = "";
+
   await ensureWSOpen();
+  sendDirectionConfig();
 
   transcriptText = "";
   translationText = "";
@@ -248,6 +303,7 @@ async function startRecording() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
     const input = e.inputBuffer.getChannelData(0);
+
     const resampled = resampleFloat32(
       input,
       audioContext.sampleRate,
@@ -275,7 +331,7 @@ function stopRecording() {
 
   // 重要:
   // ここで session.close は送らない。
-  // 送ると2回目以降に反応しなくなる。
+  // 2回目以降も同じセッションを使うため。
   statusEl.textContent = "停止しました。もう一度録音できます。";
 }
 
