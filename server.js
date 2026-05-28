@@ -83,20 +83,31 @@ Rules:
       type: "session.update",
       session: {
         type: "realtime",
+
         instructions: `
 You are a professional real-time conference interpreter.
 The user is listening to lectures, talks, and academic presentations.
-Your task is to translate speech accurately and naturally.
+Translate speech accurately and naturally.
 `,
-        input_audio_format: "pcm16",
-        input_audio_transcription: {
-          model: "whisper-1"
-        },
-        turn_detection: {
-          type: "server_vad",
-          threshold: 0.5,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 900
+
+        audio: {
+          input: {
+            format: {
+              type: "audio/pcm",
+              rate: 24000
+            },
+
+            transcription: {
+              model: "whisper-1"
+            },
+
+            turn_detection: {
+              type: "server_vad",
+              threshold: 0.5,
+              prefix_padding_ms: 300,
+              silence_duration_ms: 900
+            }
+          }
         }
       }
     });
