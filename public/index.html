@@ -5,275 +5,293 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>REALTIME VOICE TRANSLATOR</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Syne+Mono&display=swap');
-
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:#0a0a0f; --surface:#111118; --border:#1e1e2e;
-  --accent:#00ff88; --accent2:#ff6b35; --accent3:#7c6dfa;
-  --text:#e8e8f0; --muted:#555570; --live:#ff3366;
+  --bg:#0a0a0f;
+  --surface:#111118;
+  --border:#1e1e2e;
+  --accent:#00ff88;
+  --accent2:#ff6b35;
+  --accent3:#7c6dfa;
+  --text:#e8e8f0;
+  --muted:#66667f;
+  --live:#ff3366;
 }
 
 body {
-  font-family:'Syne',sans-serif;
-  background:var(--bg);
-  color:var(--text);
-  min-height:100vh;
-  display:flex;
-  justify-content:center;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
 }
 
 body::before {
-  content:'';
-  position:fixed;
-  inset:0;
+  content: "";
+  position: fixed;
+  inset: 0;
   background-image:
-    linear-gradient(rgba(0,255,136,.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,255,136,.03) 1px, transparent 1px);
-  background-size:40px 40px;
-  pointer-events:none;
+    linear-gradient(rgba(0,255,136,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,136,.035) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
 }
 
 .container {
-  position:relative;
-  z-index:1;
-  width:100%;
-  max-width:900px;
-  padding:32px 20px 60px;
-  display:flex;
-  flex-direction:column;
-  gap:22px;
+  width: 100%;
+  max-width: 980px;
+  padding: 34px 22px 60px;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
 }
 
 header {
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-end;
-  border-bottom:1px solid var(--border);
-  padding-bottom:20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 22px;
 }
 
 .logo {
-  font-size:11px;
-  font-weight:700;
-  letter-spacing:.25em;
-  color:var(--muted);
-  text-transform:uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .25em;
+  color: var(--muted);
+  text-transform: uppercase;
 }
 
 h1 {
-  font-size:clamp(42px,8vw,78px);
-  font-weight:800;
-  line-height:.9;
-  background:linear-gradient(135deg,var(--accent),var(--accent3),var(--accent2));
-  -webkit-background-clip:text;
-  -webkit-text-fill-color:transparent;
+  font-size: clamp(44px, 9vw, 86px);
+  line-height: .88;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--accent), var(--accent3), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .badge {
-  font-family:'Syne Mono',monospace;
-  color:var(--live);
-  border:1px solid var(--live);
-  padding:6px 14px;
-  border-radius:3px;
-  font-size:11px;
-  letter-spacing:.2em;
+  color: var(--live);
+  border: 1px solid var(--live);
+  padding: 6px 14px;
+  font-size: 12px;
+  letter-spacing: .18em;
+  border-radius: 4px;
 }
 
 .lang-row {
-  display:flex;
-  align-items:center;
-  gap:18px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
 }
 
 .lang-box {
-  flex:1;
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:5px;
-  padding:16px;
-  text-align:center;
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+  text-align: center;
 }
 
 .lang-label {
-  font-size:11px;
-  font-weight:700;
-  color:var(--muted);
-  letter-spacing:.2em;
-  margin-bottom:8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  margin-bottom: 8px;
 }
 
 .lang-select {
-  width:100%;
-  background:transparent;
-  border:0;
-  color:var(--text);
-  font-size:22px;
-  font-weight:700;
-  text-align:center;
-  outline:none;
-  appearance:none;
+  width: 100%;
+  background: transparent;
+  color: var(--text);
+  border: 0;
+  outline: none;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 800;
+  appearance: none;
 }
 
-.lang-select option { background:#111118; }
+.lang-select option {
+  background: #111118;
+}
 
 .arrow-icon {
-  color:var(--accent3);
-  font-size:28px;
+  color: var(--accent3);
+  font-size: 30px;
+  font-weight: 800;
 }
 
 .waveform-wrap {
-  height:70px;
+  height: 70px;
 }
 
 #waveCanvas {
-  width:100%;
-  height:100%;
+  width: 100%;
+  height: 100%;
 }
 
 .record-area {
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:16px;
-  padding:20px 0;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 0;
 }
 
 .record-btn {
-  width:110px;
-  height:110px;
-  border-radius:50%;
-  border:2px solid var(--accent);
-  background:transparent;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  cursor:pointer;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 
 .record-btn.recording {
-  border-color:var(--live);
-  animation:pulse 1.5s infinite;
+  border-color: var(--live);
+  animation: pulse 1.5s infinite;
 }
 
 @keyframes pulse {
-  0% { box-shadow:0 0 0 0 rgba(255,51,102,.4); }
-  70% { box-shadow:0 0 0 22px rgba(255,51,102,0); }
-  100% { box-shadow:0 0 0 0 rgba(255,51,102,0); }
+  0% { box-shadow: 0 0 0 0 rgba(255,51,102,.42); }
+  70% { box-shadow: 0 0 0 24px rgba(255,51,102,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,51,102,0); }
 }
 
 .record-icon {
-  width:38px;
-  height:38px;
-  border-radius:50%;
-  background:var(--accent);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 
 .record-btn.recording .record-icon {
-  width:30px;
-  height:30px;
-  border-radius:5px;
-  background:var(--live);
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  background: var(--live);
 }
 
 .record-status {
-  font-family:'Syne Mono',monospace;
-  color:var(--muted);
-  letter-spacing:.2em;
-  font-size:12px;
-}
-
-.panels {
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:16px;
-}
-
-.panel {
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:5px;
-  overflow:hidden;
-}
-
-.panel-header {
-  padding:13px 16px;
-  border-bottom:1px solid var(--border);
-  display:flex;
-  justify-content:space-between;
-}
-
-.panel-title {
-  color:var(--muted);
-  font-size:11px;
-  font-weight:700;
-  letter-spacing:.2em;
-}
-
-.panel-lang {
-  color:var(--accent3);
-  font-weight:700;
-}
-
-.panel-body {
-  min-height:150px;
-  padding:22px 18px;
-  font-size:17px;
-  line-height:1.7;
-  white-space:pre-wrap;
-  word-break:break-word;
-}
-
-.panel-body.empty {
-  color:var(--muted);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  text-align:center;
-  font-family:'Syne Mono',monospace;
-  font-size:13px;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
 }
 
 .error-banner {
-  display:none;
-  background:rgba(255,51,102,.1);
-  border:1px solid rgba(255,51,102,.35);
-  color:var(--live);
-  padding:13px 16px;
-  border-radius:5px;
-  font-family:'Syne Mono',monospace;
+  display: none;
+  background: rgba(255,51,102,.1);
+  border: 1px solid rgba(255,51,102,.38);
+  color: var(--live);
+  padding: 13px 16px;
+  border-radius: 6px;
 }
 
-.error-banner.show { display:block; }
+.error-banner.show {
+  display: block;
+}
+
+.panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.panel-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.panel-title {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .16em;
+}
+
+.panel-lang {
+  color: var(--accent3);
+  font-weight: 900;
+}
+
+.panel-body {
+  min-height: 220px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 22px 18px;
+  font-size: 18px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.panel-body.empty {
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 14px;
+}
+
+.segment {
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+.segment:last-child {
+  border-bottom: 0;
+}
 
 .statusbar {
-  display:flex;
-  align-items:center;
-  gap:12px;
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:5px;
-  padding:12px 16px;
-  color:var(--muted);
-  font-family:'Syne Mono',monospace;
-  font-size:12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 12px 16px;
+  font-size: 13px;
 }
 
 .status-dot {
-  width:7px;
-  height:7px;
-  border-radius:50%;
-  background:var(--muted);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
 }
 
-.statusbar.connected .status-dot { background:var(--accent); }
-.statusbar.recording .status-dot { background:var(--live); }
-.statusbar.error .status-dot { background:var(--live); }
+.statusbar.connected .status-dot { background: var(--accent); }
+.statusbar.recording .status-dot { background: var(--live); }
+.statusbar.error .status-dot { background: var(--live); }
 
-@media (max-width:650px) {
-  .panels { grid-template-columns:1fr; }
-  .lang-row { flex-direction:column; }
+@media (max-width: 760px) {
+  .panels { grid-template-columns: 1fr; }
+  .lang-row { flex-direction: column; }
 }
 </style>
 </head>
@@ -301,7 +319,13 @@ h1 {
     <div class="lang-box">
       <div class="lang-label">翻訳先</div>
       <select class="lang-select" id="tgtLang">
-        <option value="en">English</option>
+        <option value="English">English</option>
+        <option value="Japanese">日本語</option>
+        <option value="Chinese">中文</option>
+        <option value="Korean">한국어</option>
+        <option value="French">Français</option>
+        <option value="German">Deutsch</option>
+        <option value="Spanish">Español</option>
       </select>
     </div>
   </div>
@@ -327,17 +351,17 @@ h1 {
         <span class="panel-lang">AUTO</span>
       </div>
       <div class="panel-body empty" id="transcriptPanel">
-        話すとリアルタイムで<br>ここに表示されます
+        話すと自動区切りで<br>ここに表示されます
       </div>
     </div>
 
     <div class="panel">
       <div class="panel-header">
         <span class="panel-title">翻訳結果</span>
-        <span class="panel-lang">EN</span>
+        <span class="panel-lang" id="targetBadge">EN</span>
       </div>
       <div class="panel-body empty" id="translationPanel">
-        翻訳がリアルタイムで<br>ここに流れます
+        1〜数秒遅れで<br>高品質翻訳が表示されます
       </div>
     </div>
   </div>
@@ -358,8 +382,8 @@ let analyser = null;
 let isRecording = false;
 let animFrameId = null;
 
-let inputTranscript = "";
-let outputTranscript = "";
+let currentTranslation = "";
+let segmentCount = 0;
 
 const TARGET_SAMPLE_RATE = 24000;
 
@@ -372,8 +396,20 @@ const statusBar = document.getElementById("statusBar");
 const statusText = document.getElementById("statusText");
 const canvas = document.getElementById("waveCanvas");
 const ctx = canvas.getContext("2d");
+const tgtLang = document.getElementById("tgtLang");
+const targetBadge = document.getElementById("targetBadge");
 
 connectWS();
+
+tgtLang.addEventListener("change", () => {
+  const value = tgtLang.value;
+  targetBadge.textContent = value.slice(0, 2).toUpperCase();
+
+  sendToServer({
+    type: "config",
+    targetLanguage: value
+  });
+});
 
 function connectWS() {
   const proto = location.protocol === "https:" ? "wss" : "ws";
@@ -381,10 +417,16 @@ function connectWS() {
 
   ws.onopen = () => {
     setStatus("接続完了。録音ボタンを押してください", "connected");
+
+    sendToServer({
+      type: "config",
+      targetLanguage: tgtLang.value
+    });
   };
 
   ws.onmessage = (e) => {
     let event;
+
     try {
       event = JSON.parse(e.data);
     } catch {
@@ -399,14 +441,18 @@ function connectWS() {
   };
 
   ws.onclose = () => {
-    setStatus("切断されました。ページを再読み込みしてください", "error");
+    setStatus("切断されました。再接続します", "error");
     stopLocalAudioOnly();
+
+    setTimeout(() => {
+      connectWS();
+    }, 800);
   };
 }
 
 function handleServerEvent(event) {
   if (event.type === "proxy.connected") {
-    setStatus("OpenAI Realtime Translation に接続しました", "connected");
+    setStatus("OpenAI Realtime に接続しました", "connected");
     return;
   }
 
@@ -416,28 +462,44 @@ function handleServerEvent(event) {
   }
 
   if (event.type === "error") {
-    showError(event.message || event.error?.message || "Unknown error");
+    showError(event.message || "Unknown error");
     return;
   }
 
-  if (event.type === "session.input_transcript.delta") {
-    inputTranscript += event.delta || "";
-    renderText(transcriptPanel, inputTranscript);
+  if (event.type === "speech.started") {
+    setStatus("音声を検出中...", "recording");
     return;
   }
 
-  if (event.type === "session.output_transcript.delta") {
-    outputTranscript += event.delta || "";
-    renderText(translationPanel, outputTranscript);
+  if (event.type === "speech.stopped") {
+    setStatus("区切りを検出。翻訳中...", "connected");
+    currentTranslation = "";
     return;
   }
 
-  if (event.type === "session.closed") {
-    setStatus("翻訳セッションを終了しました", "connected");
+  if (event.type === "transcript.completed") {
+    addSegment(transcriptPanel, event.text);
     return;
   }
 
-  console.log("OpenAI event:", event.type, event);
+  if (event.type === "translation.delta") {
+    currentTranslation += event.text || "";
+    renderCurrentTranslation();
+    return;
+  }
+
+  if (event.type === "translation.done") {
+    if (event.text && event.text.trim()) {
+      replaceLastTranslation(event.text.trim());
+    }
+    currentTranslation = "";
+    return;
+  }
+
+  if (event.type === "translation.finished") {
+    setStatus("録音中 — 続けて話してください", isRecording ? "recording" : "connected");
+    return;
+  }
 }
 
 recordBtn.addEventListener("click", async () => {
@@ -465,17 +527,9 @@ async function ensureWSOpen() {
 
 async function startRecording() {
   clearError();
-
   await ensureWSOpen();
 
-  inputTranscript = "";
-  outputTranscript = "";
-
-  transcriptPanel.className = "panel-body empty";
-  transcriptPanel.innerHTML = "話すとリアルタイムで<br>ここに表示されます";
-
-  translationPanel.className = "panel-body empty";
-  translationPanel.innerHTML = "翻訳がリアルタイムで<br>ここに流れます";
+  resetPanels();
 
   try {
     mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -510,18 +564,19 @@ async function startRecording() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
     const input = e.inputBuffer.getChannelData(0);
-    const pcm24k = resampleFloat32(
+    const resampled = resampleFloat32(
       input,
       audioContext.sampleRate,
       TARGET_SAMPLE_RATE
     );
-    const pcm16 = floatToPCM16(pcm24k);
+
+    const pcm16 = floatToPCM16(resampled);
     const base64 = pcm16ToBase64(pcm16);
 
-    ws.send(JSON.stringify({
-      type: "session.input_audio_buffer.append",
+    sendToServer({
+      type: "audio",
       audio: base64
-    }));
+    });
   };
 
   isRecording = true;
@@ -533,10 +588,6 @@ async function startRecording() {
 
 function stopRecording() {
   stopLocalAudioOnly();
-
-  // 重要:
-  // ここで session.close は送らない。
-  // 送ると OpenAI 側セッションが閉じて、2回目の録音が反応しなくなる。
   setStatus("停止しました。もう一度録音できます", "connected");
 }
 
@@ -573,6 +624,72 @@ function stopLocalAudioOnly() {
   recordStatus.textContent = "TAP TO START";
 }
 
+function resetPanels() {
+  segmentCount = 0;
+  currentTranslation = "";
+
+  transcriptPanel.className = "panel-body empty";
+  transcriptPanel.innerHTML = "話すと自動区切りで<br>ここに表示されます";
+
+  translationPanel.className = "panel-body empty";
+  translationPanel.innerHTML = "1〜数秒遅れで<br>高品質翻訳が表示されます";
+}
+
+function addSegment(panel, text) {
+  if (!text || !text.trim()) return;
+
+  if (panel.classList.contains("empty")) {
+    panel.classList.remove("empty");
+    panel.innerHTML = "";
+  }
+
+  const div = document.createElement("div");
+  div.className = "segment";
+  div.textContent = text.trim();
+  panel.appendChild(div);
+  panel.scrollTop = panel.scrollHeight;
+}
+
+function renderCurrentTranslation() {
+  if (!currentTranslation.trim()) return;
+
+  if (translationPanel.classList.contains("empty")) {
+    translationPanel.classList.remove("empty");
+    translationPanel.innerHTML = "";
+  }
+
+  let current = document.getElementById("currentTranslation");
+
+  if (!current) {
+    current = document.createElement("div");
+    current.className = "segment";
+    current.id = "currentTranslation";
+    translationPanel.appendChild(current);
+  }
+
+  current.textContent = currentTranslation;
+  translationPanel.scrollTop = translationPanel.scrollHeight;
+}
+
+function replaceLastTranslation(text) {
+  let current = document.getElementById("currentTranslation");
+
+  if (!current) {
+    addSegment(translationPanel, text);
+    return;
+  }
+
+  current.removeAttribute("id");
+  current.textContent = text;
+  translationPanel.scrollTop = translationPanel.scrollHeight;
+}
+
+function sendToServer(obj) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(obj));
+  }
+}
+
 function resampleFloat32(input, fromRate, toRate) {
   if (fromRate === toRate) return input;
 
@@ -606,8 +723,8 @@ function floatToPCM16(float32Array) {
 function pcm16ToBase64(pcm16) {
   const bytes = new Uint8Array(pcm16.buffer);
   let binary = "";
-
   const chunkSize = 0x8000;
+
   for (let i = 0; i < bytes.length; i += chunkSize) {
     binary += String.fromCharCode.apply(
       null,
@@ -616,12 +733,6 @@ function pcm16ToBase64(pcm16) {
   }
 
   return btoa(binary);
-}
-
-function renderText(el, text) {
-  if (!text.trim()) return;
-  el.classList.remove("empty");
-  el.textContent = text;
 }
 
 function drawWave() {
@@ -678,9 +789,7 @@ function setStatus(message, cls) {
 }
 
 window.addEventListener("beforeunload", () => {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: "session.close" }));
-  }
+  sendToServer({ type: "close" });
 });
 </script>
 </body>
