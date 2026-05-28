@@ -37,28 +37,17 @@ wss.on("connection", (browserWs) => {
   }
 
   openaiWs.on("open", () => {
+
+    // Translation API は instructions 非対応
     openaiWs.send(JSON.stringify({
       type: "session.update",
       session: {
-        instructions: `
-You are a professional real-time interpreter.
-
-Rules:
-- If the speaker talks in Japanese, translate into natural English.
-- If the speaker talks in English, translate into natural Japanese.
-- Detect the source language automatically.
-- Output only the translation.
-- Do not repeat the original text.
-- Do not explain.
-- Do not romanize Japanese unless it is a proper noun.
-- Remove filler words naturally.
-- Preserve academic and technical meaning.
-`,
         audio: {
           input: {
             transcription: {
               model: "gpt-realtime-whisper"
             },
+
             noise_reduction: {
               type: "near_field"
             }
@@ -67,7 +56,9 @@ Rules:
       }
     }));
 
-    sendToBrowser({ type: "proxy.connected" });
+    sendToBrowser({
+      type: "proxy.connected"
+    });
   });
 
   openaiWs.on("message", (data) => {
@@ -84,24 +75,28 @@ Rules:
   });
 
   openaiWs.on("close", () => {
-    sendToBrowser({ type: "proxy.disconnected" });
+    sendToBrowser({
+      type: "proxy.disconnected"
+    });
   });
 
   browserWs.on("message", (data) => {
     if (openaiWs.readyState !== WebSocket.OPEN) return;
 
     let event;
+
     try {
       event = JSON.parse(data.toString());
     } catch {
       return;
     }
 
+    // 音声chunk転送
     if (event.type === "session.input_audio_buffer.append") {
       openaiWs.send(JSON.stringify(event));
     }
 
-    // stop時には閉じない。2回目以降も使うため。
+    // stopしてもsessionは閉じない
     if (event.type === "session.close") {
       return;
     }
