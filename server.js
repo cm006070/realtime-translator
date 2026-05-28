@@ -40,6 +40,20 @@ wss.on("connection", (browserWs) => {
     openaiWs.send(JSON.stringify({
       type: "session.update",
       session: {
+        instructions: `
+You are a professional real-time interpreter.
+
+Rules:
+- If the speaker talks in Japanese, translate into natural English.
+- If the speaker talks in English, translate into natural Japanese.
+- Detect the source language automatically.
+- Output only the translation.
+- Do not repeat the original text.
+- Do not explain.
+- Do not romanize Japanese unless it is a proper noun.
+- Remove filler words naturally.
+- Preserve academic and technical meaning.
+`,
         audio: {
           input: {
             transcription: {
@@ -48,9 +62,6 @@ wss.on("connection", (browserWs) => {
             noise_reduction: {
               type: "near_field"
             }
-          },
-          output: {
-            language: "en"
           }
         }
       }
@@ -90,7 +101,7 @@ wss.on("connection", (browserWs) => {
       openaiWs.send(JSON.stringify(event));
     }
 
-    // stop時には session.close しない
+    // stop時には閉じない。2回目以降も使うため。
     if (event.type === "session.close") {
       return;
     }
