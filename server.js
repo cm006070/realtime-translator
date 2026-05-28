@@ -25,8 +25,7 @@ wss.on('connection', (browserWs) => {
     'wss://api.openai.com/v1/realtime?model=gpt-realtime',
     {
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'OpenAI-Beta': 'realtime=v1'
+        'Authorization': `Bearer ${apiKey}`
       }
     }
   );
