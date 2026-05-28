@@ -437,7 +437,6 @@ function handleServerEvent(event) {
     return;
   }
 
-  // デバッグ用。不要なら消してOK。
   console.log("OpenAI event:", event.type, event);
 }
 
@@ -449,13 +448,32 @@ recordBtn.addEventListener("click", async () => {
   }
 });
 
+async function ensureWSOpen() {
+  if (ws && ws.readyState === WebSocket.OPEN) return;
+
+  connectWS();
+
+  await new Promise((resolve) => {
+    const timer = setInterval(() => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        clearInterval(timer);
+        resolve();
+      }
+    }, 50);
+  });
+}
+
 async function startRecording() {
   clearError();
 
+  await ensureWSOpen();
+
   inputTranscript = "";
   outputTranscript = "";
+
   transcriptPanel.className = "panel-body empty";
   transcriptPanel.innerHTML = "話すとリアルタイムで<br>ここに表示されます";
+
   translationPanel.className = "panel-body empty";
   translationPanel.innerHTML = "翻訳がリアルタイムで<br>ここに流れます";
 
@@ -492,7 +510,11 @@ async function startRecording() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
     const input = e.inputBuffer.getChannelData(0);
-    const pcm24k = resampleFloat32(input, audioContext.sampleRate, TARGET_SAMPLE_RATE);
+    const pcm24k = resampleFloat32(
+      input,
+      audioContext.sampleRate,
+      TARGET_SAMPLE_RATE
+    );
     const pcm16 = floatToPCM16(pcm24k);
     const base64 = pcm16ToBase64(pcm16);
 
@@ -512,11 +534,10 @@ async function startRecording() {
 function stopRecording() {
   stopLocalAudioOnly();
 
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: "session.close" }));
-  }
-
-  setStatus("停止しました。残りの翻訳を処理中...", "connected");
+  // 重要:
+  // ここで session.close は送らない。
+  // 送ると OpenAI 側セッションが閉じて、2回目の録音が反応しなくなる。
+  setStatus("停止しました。もう一度録音できます", "connected");
 }
 
 function stopLocalAudioOnly() {
@@ -588,7 +609,10 @@ function pcm16ToBase64(pcm16) {
 
   const chunkSize = 0x8000;
   for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+    binary += String.fromCharCode.apply(
+      null,
+      bytes.subarray(i, i + chunkSize)
+    );
   }
 
   return btoa(binary);
@@ -652,6 +676,12 @@ function setStatus(message, cls) {
   statusText.textContent = message;
   statusBar.className = "statusbar " + (cls || "");
 }
+
+window.addEventListener("beforeunload", () => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: "session.close" }));
+  }
+});
 </script>
 </body>
 </html>
