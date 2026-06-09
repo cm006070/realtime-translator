@@ -9,19 +9,25 @@ const wss = new WebSocketServer({ server });
 
 app.use(express.static(path.join(__dirname, "public")));
 
+app.get("/", (_req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
 wss.on("connection", (browserWs) => {
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
-    browserWs.send(JSON.stringify({
+    safeSend(browserWs, {
       type: "error",
       message: "OPENAI_API_KEY is not set"
-    }));
+    });
     browserWs.close();
     return;
   }
 
-  let outputLanguage = "en"; // 初期値: 日本語 → 英語
+  let outputLanguage = "en";          // ja-en => English output
+  let audioMode = "meeting";          // meeting: online meeting speaker audio through mic
+  let enableServerNoiseReduction = false;
 
   const openaiWs = new WebSocket(
     "wss://api.openai.com/v1/realtime/translations?model=gpt-realtime-translate",
@@ -32,38 +38,50 @@ wss.on("connection", (browserWs) => {
     }
   );
 
-  function sendToBrowser(obj) {
-    if (browserWs.readyState === WebSocket.OPEN) {
-      browserWs.send(JSON.stringify(obj));
+  function safeSend(ws, obj) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(obj));
+    }
+  }
+
+  function forwardToOpenAI(obj) {
+    if (openaiWs.readyState === WebSocket.OPEN) {
+      openaiWs.send(JSON.stringify(obj));
     }
   }
 
   function updateSession() {
     if (openaiWs.readyState !== WebSocket.OPEN) return;
 
-    openaiWs.send(JSON.stringify({
+    const inputAudioConfig = {
+      transcription: {
+        model: "gpt-realtime-whisper"
+      }
+    };
+
+    // Online meeting mode:
+    // Do NOT force near_field noise reduction because the remote speaker is often
+    // far-field / speaker-playback audio captured by the microphone.
+    if (enableServerNoiseReduction && audioMode !== "meeting") {
+      inputAudioConfig.noise_reduction = { type: "near_field" };
+    }
+
+    forwardToOpenAI({
       type: "session.update",
       session: {
         audio: {
-          input: {
-            transcription: {
-              model: "gpt-realtime-whisper"
-            },
-            noise_reduction: {
-              type: "near_field"
-            }
-          },
+          input: inputAudioConfig,
           output: {
             language: outputLanguage
           }
         }
       }
-    }));
+    });
   }
 
   openaiWs.on("open", () => {
     updateSession();
-    sendToBrowser({ type: "proxy.connected" });
+    safeSend(browserWs, { type: "proxy.connected" });
   });
 
   openaiWs.on("message", (data) => {
@@ -73,14 +91,14 @@ wss.on("connection", (browserWs) => {
   });
 
   openaiWs.on("error", (err) => {
-    sendToBrowser({
+    safeSend(browserWs, {
       type: "error",
       message: err.message
     });
   });
 
   openaiWs.on("close", () => {
-    sendToBrowser({ type: "proxy.disconnected" });
+    safeSend(browserWs, { type: "proxy.disconnected" });
   });
 
   browserWs.on("message", (data) => {
@@ -94,26 +112,28 @@ wss.on("connection", (browserWs) => {
     }
 
     if (event.type === "config") {
-      if (event.direction === "ja-en") {
-        outputLanguage = "en";
-      }
-
-      if (event.direction === "en-ja") {
-        outputLanguage = "ja";
-      }
-
+      outputLanguage = event.direction === "en-ja" ? "ja" : "en";
+      audioMode = event.audioMode === "myvoice" ? "myvoice" : "meeting";
+      enableServerNoiseReduction = Boolean(event.enableServerNoiseReduction);
       updateSession();
       return;
     }
 
-    if (event.type === "session.input_audio_buffer.append") {
-      openaiWs.send(JSON.stringify(event));
+    // Reset stale audio buffer before starting a new local recording session.
+    if (event.type === "client.reset_input_audio") {
+      forwardToOpenAI({ type: "session.input_audio_buffer.clear" });
+      // Some Realtime variants use the non-prefixed event name. Sending both is
+      // intentionally avoided by default because unsupported events can error.
       return;
     }
 
-    // stop時は閉じない
-    if (event.type === "session.close") {
+    if (event.type === "session.input_audio_buffer.append") {
+      forwardToOpenAI(event);
       return;
+    }
+
+    if (event.type === "session.close") {
+      openaiWs.close();
     }
   });
 
