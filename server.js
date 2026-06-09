@@ -121,7 +121,7 @@ wss.on("connection", (browserWs) => {
 
     // Reset stale audio buffer before starting a new local recording session.
     if (event.type === "client.reset_input_audio") {
-      forwardToOpenAI({ type: "session.input_audio_buffer.clear" });
+      forwardToOpenAI({ type: "input_audio_buffer.clear" });
       // Some Realtime variants use the non-prefixed event name. Sending both is
       // intentionally avoided by default because unsupported events can error.
       return;
