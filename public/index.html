@@ -4,107 +4,57 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Realtime Voice Translator</title>
-
 <style>
-body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
-  background: #0a0a0f;
-  color: #eee;
-  display: flex;
-  justify-content: center;
-}
-
-.container {
-  width: 100%;
-  max-width: 900px;
-  padding: 32px 20px;
-}
-
-h1 {
-  font-size: 48px;
-  margin: 0 0 24px;
-}
-
-#directionSelect {
-  margin-bottom: 20px;
-  padding: 12px 16px;
-  background: #111118;
-  color: white;
-  border: 1px solid #333;
-  border-radius: 8px;
-  font-size: 16px;
-}
-
-button {
-  width: 110px;
-  height: 110px;
-  border-radius: 50%;
-  border: 2px solid #00ff88;
-  background: transparent;
-  color: #00ff88;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-button.recording {
-  border-color: #ff3366;
-  color: #ff3366;
-}
-
-.panels {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-top: 24px;
-}
-
-.panel {
-  background: #111118;
-  border: 1px solid #222235;
-  border-radius: 8px;
-  padding: 18px;
-  min-height: 220px;
-  white-space: pre-wrap;
-  line-height: 1.7;
-}
-
-.status {
-  margin-top: 20px;
-  color: #aaa;
-}
-
-.error {
-  margin-top: 16px;
-  color: #ff3366;
-}
-
-canvas {
-  width: 100%;
-  height: 70px;
-  margin: 20px 0;
-}
-
-@media (max-width: 700px) {
-  .panels {
-    grid-template-columns: 1fr;
-  }
-}
+body { margin: 0; font-family: system-ui, sans-serif; background: #0a0a0f; color: #eee; display: flex; justify-content: center; }
+.container { width: 100%; max-width: 980px; padding: 32px 20px; }
+h1 { font-size: 44px; margin: 0 0 20px; }
+.controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
+select, label.toggle { padding: 12px 14px; background: #111118; color: white; border: 1px solid #333; border-radius: 8px; font-size: 15px; }
+label.toggle { display: flex; gap: 8px; align-items: center; }
+button { width: 110px; height: 110px; border-radius: 50%; border: 2px solid #00ff88; background: transparent; color: #00ff88; font-size: 14px; cursor: pointer; }
+button.recording { border-color: #ff3366; color: #ff3366; }
+.panels { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; }
+.panel { background: #111118; border: 1px solid #222235; border-radius: 8px; padding: 18px; min-height: 220px; white-space: pre-wrap; line-height: 1.7; overflow-wrap: anywhere; }
+.status { margin-top: 16px; color: #aaa; }
+.error { margin-top: 12px; color: #ff3366; }
+.note { color: #bbb; font-size: 14px; line-height: 1.6; margin: 12px 0; }
+.meterWrap { width: 100%; height: 12px; background: #1a1a25; border-radius: 999px; overflow: hidden; margin: 10px 0 4px; }
+#levelBar { height: 100%; width: 0%; background: #00ff88; }
+#eventLog { min-height: 130px; max-height: 180px; overflow: auto; font-size: 13px; color: #ccc; }
+canvas { width: 100%; height: 70px; margin: 16px 0; }
+@media (max-width: 700px) { .panels { grid-template-columns: 1fr; } h1 { font-size: 34px; } }
 </style>
 </head>
-
 <body>
 <div class="container">
   <h1>VOICE TRANSLATOR</h1>
 
-  <select id="directionSelect">
-    <option value="ja-en">日本語 → English</option>
-    <option value="en-ja">English → 日本語</option>
-  </select>
+  <div class="controls">
+    <select id="directionSelect">
+      <option value="ja-en">日本語 → English</option>
+      <option value="en-ja">English → 日本語</option>
+    </select>
+
+    <select id="audioModeSelect" title="オンライン会議の相手音声を拾う場合は会議モードを推奨">
+      <option value="meeting" selected>オンライン会議モード（エコー除去OFF）</option>
+      <option value="myvoice">自分の声モード（エコー除去ON）</option>
+    </select>
+
+    <label class="toggle" title="通常はOFF推奨。自分の声だけを近くのマイクで拾う場合のみONを試す。">
+      <input type="checkbox" id="serverNrCheck" />
+      OpenAI側ノイズ除去
+    </label>
+  </div>
+
+  <div class="note">
+    相手のオンライン音声をPCスピーカーからマイクで拾う場合は、まず「オンライン会議モード」で試してください。
+    ブラウザのエコー除去・ノイズ抑制・自動音量調整をOFFにします。
+  </div>
 
   <canvas id="wave"></canvas>
+  <div class="meterWrap"><div id="levelBar"></div></div>
+  <div class="note" id="levelText">音量: 0%</div>
 
-  <br />
   <button id="recordBtn">START</button>
 
   <div class="status" id="status">接続中...</div>
@@ -115,12 +65,14 @@ canvas {
       <h3>認識テキスト</h3>
       <div class="panel" id="transcript">ここに認識結果が表示されます</div>
     </div>
-
     <div>
       <h3>翻訳結果</h3>
       <div class="panel" id="translation">ここに翻訳結果が表示されます</div>
     </div>
   </div>
+
+  <h3>診断ログ</h3>
+  <div class="panel" id="eventLog">speech_started / speech_stopped などを表示します</div>
 </div>
 
 <script>
@@ -130,20 +82,27 @@ let audioContext = null;
 let sourceNode = null;
 let processor = null;
 let analyser = null;
+let muteGain = null;
 let isRecording = false;
 let animationId = null;
 
 let transcriptText = "";
 let translationText = "";
+let lastLogLines = [];
 
 const TARGET_SAMPLE_RATE = 24000;
 
 const directionSelect = document.getElementById("directionSelect");
+const audioModeSelect = document.getElementById("audioModeSelect");
+const serverNrCheck = document.getElementById("serverNrCheck");
 const recordBtn = document.getElementById("recordBtn");
 const statusEl = document.getElementById("status");
 const errorEl = document.getElementById("error");
 const transcriptEl = document.getElementById("transcript");
 const translationEl = document.getElementById("translation");
+const eventLogEl = document.getElementById("eventLog");
+const levelBar = document.getElementById("levelBar");
+const levelText = document.getElementById("levelText");
 const canvas = document.getElementById("wave");
 const ctx = canvas.getContext("2d");
 
@@ -155,23 +114,16 @@ function connectWS() {
 
   ws.onopen = () => {
     statusEl.textContent = "接続完了。録音できます。";
-    sendDirectionConfig();
+    sendConfig();
   };
 
   ws.onmessage = (e) => {
     let event;
-    try {
-      event = JSON.parse(e.data);
-    } catch {
-      return;
-    }
-
+    try { event = JSON.parse(e.data); } catch { return; }
     handleEvent(event);
   };
 
-  ws.onerror = () => {
-    errorEl.textContent = "WebSocket接続エラー";
-  };
+  ws.onerror = () => { errorEl.textContent = "WebSocket接続エラー"; };
 
   ws.onclose = () => {
     statusEl.textContent = "切断されました。再接続します...";
@@ -180,45 +132,53 @@ function connectWS() {
   };
 }
 
-function sendDirectionConfig() {
+function sendConfig() {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
-
   ws.send(JSON.stringify({
     type: "config",
-    direction: directionSelect.value
+    direction: directionSelect.value,
+    audioMode: audioModeSelect.value,
+    enableServerNoiseReduction: serverNrCheck.checked
   }));
 }
 
-directionSelect.addEventListener("change", () => {
-  sendDirectionConfig();
+function logEvent(line) {
+  const now = new Date().toLocaleTimeString();
+  lastLogLines.push(`[${now}] ${line}`);
+  if (lastLogLines.length > 80) lastLogLines.shift();
+  eventLogEl.textContent = lastLogLines.join("\n");
+  eventLogEl.scrollTop = eventLogEl.scrollHeight;
+}
 
-  transcriptText = "";
-  translationText = "";
-  transcriptEl.textContent = "ここに認識結果が表示されます";
-  translationEl.textContent = "ここに翻訳結果が表示されます";
-
-  statusEl.textContent =
-    directionSelect.value === "ja-en"
-      ? "日本語 → English に設定しました。"
-      : "English → 日本語 に設定しました。";
+[directionSelect, audioModeSelect, serverNrCheck].forEach(el => {
+  el.addEventListener("change", () => {
+    sendConfig();
+    logEvent(`config: direction=${directionSelect.value}, audioMode=${audioModeSelect.value}, serverNR=${serverNrCheck.checked}`);
+    statusEl.textContent = "設定を更新しました。";
+  });
 });
 
 function handleEvent(event) {
   if (event.type === "proxy.connected") {
     statusEl.textContent = "OpenAIに接続しました。";
+    logEvent("proxy.connected");
     return;
   }
 
   if (event.type === "proxy.disconnected") {
     statusEl.textContent = "OpenAI接続が切断されました。";
+    logEvent("proxy.disconnected");
     return;
   }
 
   if (event.type === "error") {
-    errorEl.textContent = event.message || event.error?.message || "Unknown error";
+    const msg = event.message || event.error?.message || "Unknown error";
+    errorEl.textContent = msg;
+    logEvent(`ERROR: ${msg}`);
     return;
   }
 
+  // Existing translation endpoint event names used by the original program.
   if (event.type === "session.input_transcript.delta") {
     transcriptText += event.delta || "";
     transcriptEl.textContent = transcriptText;
@@ -231,22 +191,22 @@ function handleEvent(event) {
     return;
   }
 
+  // Diagnostic events. Names differ slightly between Realtime variants, so catch broadly.
+  if (event.type.includes("speech_started") || event.type.includes("speech_stopped") || event.type.includes("committed") || event.type.includes("cleared") || event.type.includes("session.updated")) {
+    logEvent(event.type);
+  }
+
   console.log("OpenAI event:", event.type, event);
 }
 
 recordBtn.addEventListener("click", async () => {
-  if (isRecording) {
-    stopRecording();
-  } else {
-    await startRecording();
-  }
+  if (isRecording) stopRecording();
+  else await startRecording();
 });
 
 async function ensureWSOpen() {
   if (ws && ws.readyState === WebSocket.OPEN) return;
-
   connectWS();
-
   await new Promise((resolve) => {
     const timer = setInterval(() => {
       if (ws && ws.readyState === WebSocket.OPEN) {
@@ -257,25 +217,42 @@ async function ensureWSOpen() {
   });
 }
 
+function getAudioConstraints() {
+  if (audioModeSelect.value === "meeting") {
+    return {
+      channelCount: 1,
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false
+    };
+  }
+
+  return {
+    channelCount: 1,
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true
+  };
+}
+
 async function startRecording() {
   errorEl.textContent = "";
-
   await ensureWSOpen();
-  sendDirectionConfig();
+  sendConfig();
+
+  // Clear stale audio buffer before a new recording run.
+  ws.send(JSON.stringify({ type: "client.reset_input_audio" }));
 
   transcriptText = "";
   translationText = "";
   transcriptEl.textContent = "";
   translationEl.textContent = "";
+  lastLogLines = [];
+  eventLogEl.textContent = "";
 
   try {
     mediaStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        channelCount: 1,
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true
-      },
+      audio: getAudioConstraints(),
       video: false
     });
   } catch (err) {
@@ -293,8 +270,13 @@ async function startRecording() {
   sourceNode.connect(analyser);
 
   processor = audioContext.createScriptProcessor(4096, 1, 1);
+  muteGain = audioContext.createGain();
+  muteGain.gain.value = 0;
   sourceNode.connect(processor);
-  processor.connect(audioContext.destination);
+  // ScriptProcessor must be connected downstream in many browsers.
+  // Use zero gain to keep processing active without local speaker feedback.
+  processor.connect(muteGain);
+  muteGain.connect(audioContext.destination);
 
   isRecording = true;
 
@@ -303,13 +285,9 @@ async function startRecording() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
     const input = e.inputBuffer.getChannelData(0);
+    updateLevel(input);
 
-    const resampled = resampleFloat32(
-      input,
-      audioContext.sampleRate,
-      TARGET_SAMPLE_RATE
-    );
-
+    const resampled = resampleFloat32(input, audioContext.sampleRate, TARGET_SAMPLE_RATE);
     const pcm16 = floatToPCM16(resampled);
     const base64 = pcm16ToBase64(pcm16);
 
@@ -321,18 +299,18 @@ async function startRecording() {
 
   recordBtn.classList.add("recording");
   recordBtn.textContent = "STOP";
-  statusEl.textContent = "録音中。話してください。";
+  statusEl.textContent = audioModeSelect.value === "meeting"
+    ? "録音中：オンライン会議モード。相手の2回目の発話を確認してください。"
+    : "録音中：自分の声モード。";
 
+  logEvent(`recording.start: sampleRate=${audioContext.sampleRate}, mode=${audioModeSelect.value}`);
   drawWave();
 }
 
 function stopRecording() {
   stopLocalAudioOnly();
-
-  // 重要:
-  // ここで session.close は送らない。
-  // 2回目以降も同じセッションを使うため。
   statusEl.textContent = "停止しました。もう一度録音できます。";
+  logEvent("recording.stop");
 }
 
 function stopLocalAudioOnly() {
@@ -340,12 +318,18 @@ function stopLocalAudioOnly() {
 
   if (processor) {
     processor.disconnect();
+    processor.onaudioprocess = null;
     processor = null;
   }
 
   if (sourceNode) {
     sourceNode.disconnect();
     sourceNode = null;
+  }
+
+  if (muteGain) {
+    muteGain.disconnect();
+    muteGain = null;
   }
 
   if (audioContext) {
@@ -364,40 +348,43 @@ function stopLocalAudioOnly() {
   }
 
   clearCanvas();
+  levelBar.style.width = "0%";
+  levelText.textContent = "音量: 0%";
 
   recordBtn.classList.remove("recording");
   recordBtn.textContent = "START";
 }
 
+function updateLevel(float32Array) {
+  let sum = 0;
+  for (let i = 0; i < float32Array.length; i++) sum += float32Array[i] * float32Array[i];
+  const rms = Math.sqrt(sum / float32Array.length);
+  const percent = Math.min(100, Math.round(rms * 400));
+  levelBar.style.width = `${percent}%`;
+  levelText.textContent = `音量: ${percent}%`;
+}
+
 function resampleFloat32(input, fromRate, toRate) {
   if (fromRate === toRate) return input;
-
   const ratio = fromRate / toRate;
   const outputLength = Math.floor(input.length / ratio);
   const output = new Float32Array(outputLength);
-
   for (let i = 0; i < outputLength; i++) {
     const index = i * ratio;
     const indexFloor = Math.floor(index);
     const indexCeil = Math.min(indexFloor + 1, input.length - 1);
     const weight = index - indexFloor;
-
-    output[i] =
-      input[indexFloor] * (1 - weight) +
-      input[indexCeil] * weight;
+    output[i] = input[indexFloor] * (1 - weight) + input[indexCeil] * weight;
   }
-
   return output;
 }
 
 function floatToPCM16(float32Array) {
   const pcm16 = new Int16Array(float32Array.length);
-
   for (let i = 0; i < float32Array.length; i++) {
     const s = Math.max(-1, Math.min(1, float32Array[i]));
     pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
   }
-
   return pcm16;
 }
 
@@ -405,27 +392,19 @@ function pcm16ToBase64(pcm16) {
   const bytes = new Uint8Array(pcm16.buffer);
   let binary = "";
   const chunkSize = 0x8000;
-
   for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode.apply(
-      null,
-      bytes.subarray(i, i + chunkSize)
-    );
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
   }
-
   return btoa(binary);
 }
 
 function drawWave() {
   if (!isRecording) return;
-
   animationId = requestAnimationFrame(drawWave);
 
   const W = canvas.width = canvas.offsetWidth;
   const H = canvas.height = canvas.offsetHeight;
-
   ctx.clearRect(0, 0, W, H);
-
   if (!analyser) return;
 
   const data = new Uint8Array(analyser.frequencyBinCount);
@@ -434,15 +413,12 @@ function drawWave() {
   ctx.strokeStyle = "#00ff88";
   ctx.lineWidth = 2;
   ctx.beginPath();
-
   const step = W / data.length;
-
   for (let i = 0; i < data.length; i++) {
     const y = (data[i] / 128) * (H / 2);
     if (i === 0) ctx.moveTo(0, y);
     else ctx.lineTo(i * step, y);
   }
-
   ctx.stroke();
 }
 
@@ -453,7 +429,6 @@ function clearCanvas() {
 }
 
 window.addEventListener("beforeunload", () => {
-  // ページを閉じる時だけ終了
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: "session.close" }));
   }
